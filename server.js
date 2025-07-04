@@ -8,7 +8,7 @@ require('dotenv').config();
 const authRoutes = require('./routes/auth');
 const taskRoutes = require('./routes/tasks');
 const aiRoutes = require('./routes/ai');
-const { authenticateToken } = require('./middleware/auth');
+const { authenticateToken } = require('./middleware/auth.js');
 const { generalLimiter } = require('./utils/rateLimiter');
 
 const app = express();
