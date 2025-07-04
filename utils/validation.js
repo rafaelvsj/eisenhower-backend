@@ -1,5 +1,9 @@
 const Joi = require('joi');
-const DOMPurify = require('isomorphic-dompurify');
+const createDOMPurify = require('dompurify');
+const { JSDOM } = require('jsdom');
+
+const window = new JSDOM('').window;
+const DOMPurify = createDOMPurify(window);
 
 // Schema para validação de tarefas
 const taskSchema = Joi.object({
