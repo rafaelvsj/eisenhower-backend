@@ -28,14 +28,16 @@ const authenticateToken = async (req, res, next) => {
             .single();
 
         if (error || !user) {
+            console.error('User not found in database:', error);
             return res.status(401).json({ error: 'User not found' });
         }
 
         // Adicionar informações do usuário ao request
         req.user = {
             userId: decoded.userId,
-            email: decoded.email,
-            fullName: decoded.fullName
+            email: decoded.email || user.email,
+            fullName: decoded.fullName || user.full_name,
+            id: user.id
         };
 
         next();
@@ -51,12 +53,21 @@ const authenticateToken = async (req, res, next) => {
             return res.status(401).json({ error: 'Token expired' });
         }
         
+        // Erro de conexão com Supabase
+        if (error.message && error.message.includes('fetch')) {
+            return res.status(503).json({ error: 'Database connection failed' });
+        }
+        
         return res.status(500).json({ error: 'Authentication failed' });
     }
 };
 
 // Middleware para verificar admin
 const requireAdmin = (req, res, next) => {
+    if (!req.user) {
+        return res.status(401).json({ error: 'Authentication required' });
+    }
+    
     if (req.user.email !== 'admin@admin.com') {
         return res.status(403).json({ error: 'Admin access required' });
     }
@@ -69,14 +80,29 @@ const logActivity = (req, res, next) => {
     
     res.on('finish', () => {
         const duration = Date.now() - startTime;
-        console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl} - ${res.statusCode} - ${duration}ms - User: ${req.user?.email || 'Anonymous'}`);
+        const userInfo = req.user?.email || 'Anonymous';
+        const timestamp = new Date().toISOString();
+        
+        console.log(`[${timestamp}] ${req.method} ${req.originalUrl} - ${res.statusCode} - ${duration}ms - User: ${userInfo}`);
+        
+        // Log de auditoria para operações sensíveis
+        if (req.method !== 'GET' && req.user) {
+            console.log(`[AUDIT] ${timestamp} - ${userInfo} performed ${req.method} on ${req.originalUrl}`);
+        }
     });
     
+    next();
+};
+
+// Middleware opcional para rate limiting por usuário
+const userRateLimit = (req, res, next) => {
+    // Implementar se necessário
     next();
 };
 
 module.exports = {
     authenticateToken,
     requireAdmin,
-    logActivity
+    logActivity,
+    userRateLimit
 };
